@@ -36,6 +36,9 @@ class SettingsRepository(private val context: Context) {
     /** 是否常驻前台服务保活，默认开启（国产 ROM 上关掉很容易收不到后台通知）。 */
     val keepAlive: Flow<Boolean> = store.data.map { it[KEY_KEEP_ALIVE] ?: true }
 
+    /** 是否已经看过主页的首次使用引导。 */
+    val guideShown: Flow<Boolean> = store.data.map { it[KEY_GUIDE_SHOWN] ?: false }
+
     suspend fun updateKeywords(rules: List<KeywordRule>) {
         store.edit { it[KEY_KEYWORDS] = encodeKeywords(rules) }
     }
@@ -60,6 +63,10 @@ class SettingsRepository(private val context: Context) {
         store.edit { it[KEY_KEEP_ALIVE] = enabled }
     }
 
+    suspend fun setGuideShown() {
+        store.edit { it[KEY_GUIDE_SHOWN] = true }
+    }
+
     suspend fun isKeepAlive(): Boolean = keepAlive.first()
 
     suspend fun currentKeywords(): List<KeywordRule> = keywords.first()
@@ -79,6 +86,7 @@ class SettingsRepository(private val context: Context) {
         private val KEY_SUMMARY_TIME = intPreferencesKey("summary_minutes")
         private val KEY_ONBOARDED = booleanPreferencesKey("onboarded")
         private val KEY_KEEP_ALIVE = booleanPreferencesKey("keep_alive")
+        private val KEY_GUIDE_SHOWN = booleanPreferencesKey("guide_shown")
 
         /** 默认关键词：第二项为是否默认开启。 */
         private val DEFAULT_KEYWORDS: List<Pair<String, Boolean>> = listOf(

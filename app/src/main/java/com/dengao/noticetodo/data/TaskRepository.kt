@@ -7,6 +7,7 @@ import com.dengao.noticetodo.data.local.toEntity
 import com.dengao.noticetodo.domain.model.Task
 import com.dengao.noticetodo.notification.ReminderScheduler
 import com.dengao.noticetodo.util.TimeUtils
+import com.dengao.noticetodo.widget.WidgetUpdater
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -25,6 +26,7 @@ class TaskRepository(
     suspend fun insert(task: Task): Long {
         val id = taskDao.insert(task.toEntity())
         ReminderScheduler.scheduleFor(context, task.copy(id = id))
+        WidgetUpdater.refresh(context)
         return id
     }
 
@@ -35,6 +37,7 @@ class TaskRepository(
         } else {
             ReminderScheduler.scheduleFor(context, task)
         }
+        WidgetUpdater.refresh(context)
     }
 
     suspend fun setDone(task: Task, done: Boolean) {
@@ -42,16 +45,19 @@ class TaskRepository(
         taskDao.setDone(task.id, done, if (done) now else null)
         if (done) ReminderScheduler.cancel(context, task.id)
         else ReminderScheduler.scheduleFor(context, task)
+        WidgetUpdater.refresh(context)
     }
 
     suspend fun delete(task: Task) {
         taskDao.delete(task.toEntity())
         ReminderScheduler.cancel(context, task.id)
+        WidgetUpdater.refresh(context)
     }
 
     suspend fun clearAll() {
         taskDao.allTasks().forEach { ReminderScheduler.cancel(context, it.id) }
         taskDao.clearAll()
+        WidgetUpdater.refresh(context)
     }
 
     suspend fun todayStats(now: Long = System.currentTimeMillis()): TodayStats {
@@ -65,6 +71,10 @@ class TaskRepository(
     }
 
     suspend fun activeTasksOnce(): List<Task> = taskDao.activeTasks().map { it.toDomain() }
+
+    /** 小组件用：优先最近一个未来 DDL，没有就退回到排序最靠前的未完成任务。 */
+    suspend fun nextActiveTask(now: Long = System.currentTimeMillis()): Task? =
+        (taskDao.nextUpcoming(now) ?: taskDao.nextActive())?.toDomain()
 }
 
 data class TodayStats(val dueToday: Int, val doneToday: Int, val overdue: Int) {

@@ -66,6 +66,32 @@
                 android:value="notification_listener_keepalive" />
         </service>
 
+        <!-- 桌面小组件：最近待办 4×1 -->
+        <receiver
+            android:name=".widget.TaskWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_task_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_task_info" />
+        </receiver>
+
+        <!-- 桌面小组件：今日待办 2×2 -->
+        <receiver
+            android:name=".widget.TodayWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_today_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_today_info" />
+        </receiver>
+
         <!-- DDL 提醒闹钟 -->
         <receiver
             android:name=".notification.ReminderReceiver"

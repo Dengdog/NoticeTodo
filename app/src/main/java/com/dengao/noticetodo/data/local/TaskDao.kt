@@ -51,4 +51,12 @@ interface TaskDao {
 
     @Query("SELECT COUNT(*) FROM tasks WHERE isDone = 0 AND ddl IS NOT NULL AND ddl < :now")
     suspend fun countOverdue(now: Long): Int
+
+    /** 小组件用：最近一个未来 DDL 的未完成任务。 */
+    @Query("SELECT * FROM tasks WHERE isDone = 0 AND ddl IS NOT NULL AND ddl > :now ORDER BY ddl ASC LIMIT 1")
+    suspend fun nextUpcoming(now: Long): TaskEntity?
+
+    /** 小组件兜底：没有任何未来 DDL 时，取排序最靠前的未完成任务。 */
+    @Query("SELECT * FROM tasks WHERE isDone = 0 ORDER BY (ddl IS NULL) ASC, ddl ASC, createdAt DESC LIMIT 1")
+    suspend fun nextActive(): TaskEntity?
 }

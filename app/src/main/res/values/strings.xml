@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">通知待办</string>
+
+    <!-- 桌面小组件 -->
+    <string name="widget_task_label">最近待办</string>
+    <string name="widget_empty_title">还没有待办</string>
+    <string name="widget_empty_hint">点这里新建一个</string>
+    <string name="widget_today_label">今日待办</string>
 </resources>

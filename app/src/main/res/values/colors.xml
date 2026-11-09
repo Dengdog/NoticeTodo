@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#4C5BD4</color>
+
+    <!-- 桌面小组件 -->
+    <color name="widget_bg">#FFFFFFFF</color>
+    <color name="widget_title">#FF1B1B1F</color>
+    <color name="widget_sub">#FF6B6B72</color>
+    <color name="widget_accent">#FF4C5BD4</color>
+    <color name="widget_track">#1F4C5BD4</color>
+    <color name="widget_empty">#FF8A8A92</color>
 </resources>
