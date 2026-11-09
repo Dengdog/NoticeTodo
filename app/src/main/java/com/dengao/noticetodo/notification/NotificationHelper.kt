@@ -22,6 +22,7 @@ object NotificationHelper {
     const val CHANNEL_REMINDER = "reminder"
     const val CHANNEL_SUMMARY = "summary"
     const val CHANNEL_CATCH = "catch"
+    const val CHANNEL_KEEPALIVE = "keepalive"
 
     private var nextId = 2000
 
@@ -45,6 +46,38 @@ object NotificationHelper {
                 enableVibration(true)
             }
         )
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_KEEPALIVE, "后台保活", NotificationManager.IMPORTANCE_MIN).apply {
+                description = "保持通知监听在后台运行，避免被系统冻结"
+                setShowBadge(false)
+                enableVibration(false)
+                setSound(null, null)
+            }
+        )
+    }
+
+    /** 常驻通知：让进程保持在前台服务级别，避免后台回调被冻结。 */
+    fun buildKeepAliveNotification(context: Context): android.app.Notification {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pending = PendingIntent.getActivity(
+            context,
+            9100,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        return NotificationCompat.Builder(context, CHANNEL_KEEPALIVE)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("通知待办正在监听微信通知")
+            .setContentText("保活中，收到命中关键词的消息会立刻弹窗")
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setSilent(true)
+            .setOngoing(true)
+            .setShowWhen(false)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .setContentIntent(pending)
+            .build()
     }
 
     fun canPost(context: Context): Boolean {

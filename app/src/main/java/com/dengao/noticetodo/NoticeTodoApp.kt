@@ -1,6 +1,7 @@
 package com.dengao.noticetodo
 
 import android.app.Application
+import com.dengao.noticetodo.notification.KeepAliveService
 import com.dengao.noticetodo.notification.NotificationHelper
 import com.dengao.noticetodo.notification.ReminderScheduler
 import com.dengao.noticetodo.notification.SummaryScheduler
@@ -26,6 +27,10 @@ class NoticeTodoApp : Application() {
                     SummaryScheduler.schedule(this@NoticeTodoApp, container.settingsRepository.currentSummaryMinutes())
                 }
                 ReminderScheduler.rescheduleAll(this@NoticeTodoApp)
+                // App 一起来就把保活前台服务拉起，减少「被冻结后要打开 App 才弹窗」的窗口期
+                if (container.settingsRepository.isKeepAlive()) {
+                    KeepAliveService.start(this@NoticeTodoApp)
+                }
             }
         }
     }

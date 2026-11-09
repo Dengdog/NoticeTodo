@@ -80,6 +80,7 @@ fun SettingsScreen(
     val reminderEnabled by viewModel.reminderEnabled.collectAsStateWithLifecycle()
     val summaryEnabled by viewModel.summaryEnabled.collectAsStateWithLifecycle()
     val summaryMinutes by viewModel.summaryMinutes.collectAsStateWithLifecycle()
+    val keepAlive by viewModel.keepAlive.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     var permissionTick by remember { mutableIntStateOf(0) }
@@ -89,6 +90,7 @@ fun SettingsScreen(
     val hasOverlay = remember(permissionTick) { PermissionUtils.hasOverlay(context) }
     val hasPost = remember(permissionTick) { PermissionUtils.hasPostNotifications(context) }
     val hasExact = remember(permissionTick) { PermissionUtils.hasExactAlarm(context) }
+    val hasBatteryWhitelist = remember(permissionTick) { PermissionUtils.isIgnoringBatteryOptimizations(context) }
 
     var showAddKeyword by remember { mutableStateOf(false) }
     var newKeyword by remember { mutableStateOf("") }
@@ -145,6 +147,93 @@ fun SettingsScreen(
                         description = "保证 3 小时提醒准时",
                         onOpen = { PermissionUtils.openExactAlarmSettings(context) }
                     )
+                }
+            }
+
+            SectionTitle("后台运行（收不到悬浮窗就改这里）")
+            Card(shape = RoundedCornerShape(16.dp)) {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("常驻通知保活", fontWeight = FontWeight.Medium)
+                            Text(
+                                "保持通知监听在后台运行，避免被杀后要打开 App 才弹窗",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(checked = keepAlive, onCheckedChange = { viewModel.setKeepAlive(it) })
+                    }
+                    HorizontalDivider()
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("电池优化白名单", fontWeight = FontWeight.Medium)
+                            Text(
+                                if (hasBatteryWhitelist) "已允许后台运行" else "未加入白名单，系统可能冻结 App",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (hasBatteryWhitelist) MaterialTheme.colorScheme.onSurfaceVariant
+                                else MaterialTheme.colorScheme.error
+                            )
+                        }
+                        TextButton(onClick = { PermissionUtils.requestIgnoreBatteryOptimizations(context) }) {
+                            Text(if (hasBatteryWhitelist) "查看" else "去开启")
+                        }
+                    }
+                    HorizontalDivider()
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("自启动 / 后台弹出界面", fontWeight = FontWeight.Medium)
+                            Text(
+                                "小米、华为、OPPO、vivo 需要在系统里手动允许",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(onClick = {
+                            if (!PermissionUtils.openAutoStartSettings(context)) {
+                                PermissionUtils.openAppDetails(context)
+                            }
+                        }) { Text("去设置") }
+                    }
+                    HorizontalDivider()
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("重新连接通知监听", fontWeight = FontWeight.Medium)
+                            Text(
+                                "监听被系统断开后可手动重绑",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(onClick = { viewModel.rebindListener() }) { Text("重连") }
+                    }
+                    HorizontalDivider()
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("运行日志", fontWeight = FontWeight.Medium)
+                            Text(
+                                "看通知有没有收到、悬浮窗为什么没弹",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(onClick = { navController.navigate(Routes.DIAG) }) { Text("查看") }
+                    }
                 }
             }
 

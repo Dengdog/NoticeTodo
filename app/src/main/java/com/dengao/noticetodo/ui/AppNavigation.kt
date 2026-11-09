@@ -18,6 +18,7 @@ object Routes {
     const val HOME = "home"
     const val EDIT = "edit?taskId={taskId}"
     const val SETTINGS = "settings"
+    const val DIAG = "diag"
 
     fun edit(taskId: Long? = null): String = "edit?taskId=${taskId ?: -1L}"
 }
@@ -72,6 +73,9 @@ fun AppNavHost(
         }
         composable(Routes.SETTINGS) {
             SettingsScreen(navController = navController, container = container, incoming = incoming)
+        }
+        composable(Routes.DIAG) {
+            com.dengao.noticetodo.ui.diag.DiagScreen(navController = navController)
         }
     }
 }

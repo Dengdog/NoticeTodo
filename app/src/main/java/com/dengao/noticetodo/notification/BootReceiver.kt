@@ -22,6 +22,9 @@ class BootReceiver : BroadcastReceiver() {
                 if (settings.isSummaryEnabled()) {
                     SummaryScheduler.schedule(appContext, settings.currentSummaryMinutes())
                 }
+                if (settings.isKeepAlive()) {
+                    KeepAliveService.start(appContext)
+                }
             } finally {
                 pendingResult.finish()
             }

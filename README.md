@@ -73,6 +73,28 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 模拟器上没有微信，可以在「设置 → 其他 → 调试：模拟一条微信通知（弹悬浮窗）」
 走一遍完整链路（仅 debug 包含该入口）。
 
+## 收不到悬浮窗？按这个顺序查
+
+典型症状：微信消息来了不弹窗，**打开 App 之后才弹**。这是后台进程被 ROM 冻结、回调被
+推迟到进程唤醒才执行，不是解析逻辑的问题。App 内置了三层防护，仍不行就按顺序检查：
+
+1. **常驻通知保活**（设置 → 后台运行）保持开启。开启后状态栏有一条低优先级的
+   「通知待办正在监听微信通知」通知，这是前台服务，把进程优先级抬到 `fg-service`，
+   避免被系统/ROM 冻结。
+2. **电池优化白名单**（设置 → 后台运行 → 电池优化白名单）→「去开启」。
+3. **自启动 / 后台弹出界面**（设置 → 后台运行 → 自启动）在系统里允许：
+   小米是「自启动」+「后台弹出界面」+「省电策略：无限制」，华为是「应用启动管理 → 手动管理」，
+   OPPO / vivo 类似。
+4. 还不行就看 **设置 → 后台运行 → 运行日志**，每一步都有记录：
+   - `[notify] 收到微信通知 ...` → 通知收到了
+   - `[notify] 未命中关键词` → 被关键词过滤了，去关键词页加词
+   - `[overlay] 悬浮窗已显示` / `没有悬浮窗权限` / `addView 失败：...`
+   - `[keepalive] foreground started` / `startForeground failed: ...`
+   - `[listener] connected` / `disconnected` → 监听连接状态
+
+日志同时写在 `filesDir/diag.log`，debug 包可以用
+`adb shell run-as com.dengao.noticetodo cat files/diag.log` 直接取。
+
 ## 架构
 
 ```

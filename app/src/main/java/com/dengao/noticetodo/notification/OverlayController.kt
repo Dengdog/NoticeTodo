@@ -16,6 +16,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.dengao.noticetodo.parser.ParsedNotice
+import com.dengao.noticetodo.util.Diag
 import com.dengao.noticetodo.util.TimeUtils
 
 /**
@@ -38,13 +39,14 @@ object OverlayController {
         parsed: ParsedNotice,
         onAdd: () -> Unit,
         onEdit: () -> Unit
-    ) {
+    ): Boolean {
         if (!Settings.canDrawOverlays(context)) {
+            Diag.log(context, "overlay", "没有悬浮窗权限，退化为通知")
             NotificationHelper.postCaughtNotice(context, parsed)
-            return
+            return false
         }
         dismiss()
-        val windowManager = context.getSystemService(WindowManager::class.java) ?: return
+        val windowManager = context.getSystemService(WindowManager::class.java) ?: return false
         val density = context.resources.displayMetrics.density
 
         val container = LinearLayout(context).apply {
@@ -153,8 +155,12 @@ object OverlayController {
             rootView = container
             layoutParams = params
             resetTimer()
+            Diag.log(context, "overlay", "悬浮窗已显示")
+            return true
         } catch (e: Exception) {
+            Diag.log(context, "overlay", "addView 失败：${e.javaClass.simpleName}: ${e.message}")
             NotificationHelper.postCaughtNotice(context, parsed)
+            return false
         }
     }
 

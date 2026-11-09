@@ -10,6 +10,11 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <!-- 开机重排闹钟 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- 后台保活前台服务：避免通知监听进程被 ROM 冻结 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- 引导用户把 App 加入电池优化白名单 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:name=".NoticeTodoApp"
@@ -47,6 +52,16 @@
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
+        </service>
+
+        <!-- 保活前台服务：常驻通知，防止后台进程被冻结导致悬浮窗延迟 -->
+        <service
+            android:name=".notification.KeepAliveService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="notification_listener_keepalive" />
         </service>
 
         <!-- DDL 提醒闹钟 -->

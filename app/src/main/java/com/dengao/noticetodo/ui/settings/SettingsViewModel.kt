@@ -1,11 +1,17 @@
 package com.dengao.noticetodo.ui.settings
 
 import android.app.Application
+import android.content.ComponentName
+import android.os.Build
+import android.service.notification.NotificationListenerService
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.dengao.noticetodo.NoticeTodoApp
 import com.dengao.noticetodo.data.KeywordRule
+import com.dengao.noticetodo.notification.KeepAliveService
 import com.dengao.noticetodo.notification.SummaryScheduler
+import com.dengao.noticetodo.notification.WeChatNotificationListener
+import com.dengao.noticetodo.util.Diag
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,6 +36,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     val summaryMinutes = settings.summaryMinutesOfDay.stateIn(
         viewModelScope, SharingStarted.WhileSubscribed(5_000), 8 * 60
+    )
+
+    val keepAlive = settings.keepAlive.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5_000), true
     )
 
     fun addKeyword(text: String) {
@@ -84,6 +94,31 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             container.taskRepository.clearAll()
             onDone()
+        }
+    }
+
+    /** 开关常驻保活：立即生效，不用等下次重启。 */
+    fun setKeepAlive(enabled: Boolean) {
+        viewModelScope.launch {
+            settings.setKeepAlive(enabled)
+            if (enabled) {
+                KeepAliveService.start(context)
+            } else {
+                KeepAliveService.stop(context)
+            }
+            Diag.log(context, "keepalive", if (enabled) "用户开启，已启动前台服务" else "用户关闭，已停止前台服务")
+        }
+    }
+
+    /** 手动重绑通知监听（系统断开/ROM 限制后可自救）。 */
+    fun rebindListener() {
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                NotificationListenerService.requestRebind(
+                    ComponentName(context, WeChatNotificationListener::class.java)
+                )
+                Diag.log(context, "listener", "手动 requestRebind")
+            }
         }
     }
 }
