@@ -91,6 +91,10 @@ fun SettingsScreen(
     val hasPost = remember(permissionTick) { PermissionUtils.hasPostNotifications(context) }
     val hasExact = remember(permissionTick) { PermissionUtils.hasExactAlarm(context) }
     val hasBatteryWhitelist = remember(permissionTick) { PermissionUtils.isIgnoringBatteryOptimizations(context) }
+    val listenerConnected = remember(permissionTick) {
+        com.dengao.noticetodo.notification.ListenerGuard.isConnected()
+    }
+    val canDeepRepair = remember(permissionTick) { PermissionUtils.canDeepRepairListener(context) }
 
     var showAddKeyword by remember { mutableStateOf(false) }
     var newKeyword by remember { mutableStateOf("") }
@@ -123,7 +127,7 @@ fun SettingsScreen(
                     PermissionRow(
                         name = "通知使用权",
                         granted = hasListener,
-                        description = "读取微信通知栏内容",
+                        description = if (listenerConnected) "已连接，正在监听微信通知" else "已授权但未连接，点「重连」",
                         onOpen = { PermissionUtils.openNotificationAccess(context) }
                     )
                     HorizontalDivider()
@@ -217,7 +221,29 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        TextButton(onClick = { viewModel.rebindListener() }) { Text("重连") }
+                        TextButton(onClick = {
+                            viewModel.rebindListener()
+                            permissionTick++
+                        }) { Text("重连") }
+                    }
+                    HorizontalDivider()
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("深度修复通知监听", fontWeight = FontWeight.Medium)
+                            Text(
+                                if (canDeepRepair) "已具备权限：卡住时点「修复」强制重绑"
+                                else "未授权 adb 权限，README 里有一行命令（可选）",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(onClick = {
+                            viewModel.rebindListener()
+                            permissionTick++
+                        }) { Text("修复") }
                     }
                     HorizontalDivider()
                     Row(

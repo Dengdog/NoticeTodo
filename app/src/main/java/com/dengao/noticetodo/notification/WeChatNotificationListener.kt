@@ -35,11 +35,13 @@ class WeChatNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         Diag.log(this, "listener", "connected")
+        ListenerGuard.onConnected()
         keepAliveIfEnabled()
     }
 
     override fun onListenerDisconnected() {
         Diag.log(this, "listener", "disconnected, requestRebind")
+        ListenerGuard.onDisconnected()
         super.onListenerDisconnected()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             requestRebind(ComponentName(this, WeChatNotificationListener::class.java))
@@ -141,6 +143,7 @@ class WeChatNotificationListener : NotificationListenerService() {
 
     override fun onDestroy() {
         Diag.log(this, "listener", "destroyed")
+        ListenerGuard.onDisconnected()
         scope.cancel()
         super.onDestroy()
     }

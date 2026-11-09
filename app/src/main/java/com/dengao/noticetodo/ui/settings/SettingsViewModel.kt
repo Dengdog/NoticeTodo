@@ -1,17 +1,15 @@
 package com.dengao.noticetodo.ui.settings
 
 import android.app.Application
-import android.content.ComponentName
-import android.os.Build
-import android.service.notification.NotificationListenerService
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.dengao.noticetodo.NoticeTodoApp
 import com.dengao.noticetodo.data.KeywordRule
 import com.dengao.noticetodo.notification.KeepAliveService
+import com.dengao.noticetodo.notification.ListenerGuard
 import com.dengao.noticetodo.notification.SummaryScheduler
-import com.dengao.noticetodo.notification.WeChatNotificationListener
 import com.dengao.noticetodo.util.Diag
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -110,15 +108,11 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    /** 手动重绑通知监听（系统断开/ROM 限制后可自救）。 */
+    /** 手动重绑通知监听（系统断开/ROM 忽略重绑请求时可自救）。 */
     fun rebindListener() {
-        runCatching {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                NotificationListenerService.requestRebind(
-                    ComponentName(context, WeChatNotificationListener::class.java)
-                )
-                Diag.log(context, "listener", "手动 requestRebind")
-            }
+        viewModelScope.launch(Dispatchers.IO) {
+            Diag.log(context, "listener", "用户点击「重连」，开始修复")
+            ListenerGuard.repair(context)
         }
     }
 }

@@ -91,6 +91,19 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
    - `[overlay] 悬浮窗已显示` / `没有悬浮窗权限` / `addView 失败：...`
    - `[keepalive] foreground started` / `startForeground failed: ...`
    - `[listener] connected` / `disconnected` → 监听连接状态
+   - `[guard] 监听未连接，已请求 requestRebind` / `已通过 secure settings 强制重绑监听`
+
+5. **被「上滑清理 / 一键清理」杀掉**（日志里能看到 `am_kill ... due to SwipeUpClean`）：
+   前台服务挡得住内存回收，挡不住用户主动清理。清理后进程会被 `START_STICKY` 拉起来，
+   但 HyperOS 这类 ROM **不会自动把通知监听重新绑上**，于是进程活着却收不到通知。
+   现代码会在进程重启后自动修复（先 `requestRebind`，无效再强制重绑），前提是授予下面这条一次性权限：
+
+   ```bash
+   adb shell pm grant com.dengao.noticetodo android.permission.WRITE_SECURE_SETTINGS
+   ```
+
+   没这条权限也能用，只是被清理后需要打开一次 App 才能恢复。另外建议在多任务里把
+   「通知待办」**下拉锁定**，这样「一键清理」就不会杀它。
 
 日志同时写在 `filesDir/diag.log`，debug 包可以用
 `adb shell run-as com.dengao.noticetodo cat files/diag.log` 直接取。

@@ -7,6 +7,9 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import com.dengao.noticetodo.util.Diag
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * 保活前台服务。
@@ -34,6 +37,9 @@ class KeepAliveService : Service() {
                 startForeground(ID, notification)
             }
             Diag.log(this, "keepalive", "foreground started")
+            // 进程被清理后重启时，系统不一定帮我们把通知监听重新绑上，这里主动补一刀
+            val appContext = applicationContext
+            CoroutineScope(Dispatchers.IO).launch { ListenerGuard.repair(appContext) }
         } catch (t: Throwable) {
             Diag.log(this, "keepalive", "startForeground failed: ${t.javaClass.simpleName}: ${t.message}")
             stopSelf()

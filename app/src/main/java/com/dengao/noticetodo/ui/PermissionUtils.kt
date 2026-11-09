@@ -117,6 +117,11 @@ object PermissionUtils {
         }
     }
 
+    /** 是否具备「深度修复通知监听」所需的 WRITE_SECURE_SETTINGS（需 adb 一次性授权）。 */
+    fun canDeepRepairListener(context: Context): Boolean =
+        context.checkSelfPermission(android.Manifest.permission.WRITE_SECURE_SETTINGS) ==
+            PackageManager.PERMISSION_GRANTED
+
     /**
      * 打开各家 ROM 的「自启动 / 后台运行」管理页。
      * 失败返回 false，调用方退回到应用详情页。

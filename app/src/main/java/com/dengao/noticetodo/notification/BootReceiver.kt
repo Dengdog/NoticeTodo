@@ -25,6 +25,8 @@ class BootReceiver : BroadcastReceiver() {
                 if (settings.isKeepAlive()) {
                     KeepAliveService.start(appContext)
                 }
+                WatchdogScheduler.schedule(appContext)
+                ListenerGuard.ensureBound(appContext)
             } finally {
                 pendingResult.finish()
             }

@@ -170,6 +170,28 @@ object NotificationHelper {
         notify(context, nextId++, notification)
     }
 
+    /** 监听被系统断开且自动修复失败时，提示用户点一下（点开 App 会自动再修一次）。 */
+    fun postListenerDown(context: Context) {
+        if (!canPost(context)) return
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pending = PendingIntent.getActivity(
+            context,
+            9200,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_CATCH)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("通知监听被系统断开了")
+            .setContentText("点一下恢复，否则收不到微信待办提醒")
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .build()
+        notify(context, 9200, notification)
+    }
+
     private fun notify(context: Context, id: Int, notification: android.app.Notification) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         try {

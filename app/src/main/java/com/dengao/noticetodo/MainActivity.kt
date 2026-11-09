@@ -61,6 +61,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // 每次回到前台都确认监听是否真的连着（授权 ≠ 已连接）
+        lifecycleScope.launch {
+            com.dengao.noticetodo.notification.ListenerGuard.repair(this@MainActivity)
+        }
         checkClipboard()
     }
 
