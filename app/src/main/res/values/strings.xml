@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">通知待办</string>
+    <string name="app_name">Deadline reminder</string>
 
     <!-- 桌面小组件 -->
     <string name="widget_task_label">最近待办</string>

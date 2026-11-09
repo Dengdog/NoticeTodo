@@ -1,4 +1,6 @@
-# 通知待办 NoticeTodo
+# Deadline reminder（通知待办）
+
+安装到手机后显示的名字是 **Deadline reminder**，项目名 / 包名仍是 `NoticeTodo` / `com.dengao.noticetodo`。
 
 把微信通知里「截止 / DDL / 作业 / 考试」这类信息，自动变成一个带截止时间的本地待办。
 命中关键词时弹一个轻量悬浮窗，一键 **添加 / 编辑后添加 / 忽略**。
