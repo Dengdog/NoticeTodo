@@ -17,10 +17,13 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val EDIT = "edit?taskId={taskId}"
+    const val DETAIL = "detail?taskId={taskId}"
     const val SETTINGS = "settings"
     const val DIAG = "diag"
 
     fun edit(taskId: Long? = null): String = "edit?taskId=${taskId ?: -1L}"
+
+    fun detail(taskId: Long): String = "detail?taskId=$taskId"
 }
 
 @Composable
@@ -69,6 +72,16 @@ fun AppNavHost(
                 taskId = entry.arguments?.getLong("taskId") ?: -1L,
                 container = container,
                 incoming = incoming
+            )
+        }
+        composable(
+            route = Routes.DETAIL,
+            arguments = listOf(navArgument("taskId") { type = NavType.LongType; defaultValue = -1L })
+        ) { entry ->
+            com.dengao.noticetodo.ui.detail.TaskDetailScreen(
+                navController = navController,
+                taskId = entry.arguments?.getLong("taskId") ?: -1L,
+                container = container
             )
         }
         composable(Routes.SETTINGS) {

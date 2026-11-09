@@ -28,6 +28,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList()
     )
 
+    val cancelled = repository.cancelledTasks.stateIn(
+        viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList()
+    )
+
     private val _now = MutableStateFlow(System.currentTimeMillis())
     val now: StateFlow<Long> = _now.asStateFlow()
 
@@ -54,6 +58,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setDone(task: Task, done: Boolean) {
         viewModelScope.launch { repository.setDone(task, done) }
+    }
+
+    fun setCancelled(task: Task, cancelled: Boolean) {
+        viewModelScope.launch { repository.setCancelled(task, cancelled) }
     }
 
     fun delete(task: Task) {

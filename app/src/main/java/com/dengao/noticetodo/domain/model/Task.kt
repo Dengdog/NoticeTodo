@@ -24,6 +24,13 @@ enum class TaskSource(val label: String) {
     }
 }
 
+/** 任务状态：进行中 / 已完成 / 已终止（主动放弃）。 */
+enum class TaskStatus(val label: String) {
+    ACTIVE("进行中"),
+    DONE("已完成"),
+    CANCELLED("已终止")
+}
+
 data class Task(
     val id: Long = 0L,
     val title: String,
@@ -34,7 +41,18 @@ data class Task(
     val source: TaskSource = TaskSource.MANUAL,
     val rawText: String? = null,
     val isDone: Boolean = false,
+    val cancelled: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val completedAt: Long? = null,
     val notificationKey: String? = null
-)
+) {
+    val status: TaskStatus
+        get() = when {
+            cancelled -> TaskStatus.CANCELLED
+            isDone -> TaskStatus.DONE
+            else -> TaskStatus.ACTIVE
+        }
+
+    fun isOverdue(now: Long = System.currentTimeMillis()): Boolean =
+        !isDone && !cancelled && ddl != null && ddl < now
+}

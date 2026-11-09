@@ -21,7 +21,12 @@ class TaskRepository(
 
     val completedTasks: Flow<List<Task>> = taskDao.observeCompleted().map { list -> list.map { it.toDomain() } }
 
+    val cancelledTasks: Flow<List<Task>> = taskDao.observeCancelled().map { list -> list.map { it.toDomain() } }
+
     suspend fun get(id: Long): Task? = taskDao.findById(id)?.toDomain()
+
+    /** 详情页用：任务变化（编辑/完成/终止）后自动刷新。 */
+    fun observeTask(id: Long): Flow<Task?> = taskDao.observeById(id).map { it?.toDomain() }
 
     suspend fun insert(task: Task): Long {
         val id = taskDao.insert(task.toEntity())
@@ -32,7 +37,7 @@ class TaskRepository(
 
     suspend fun update(task: Task) {
         taskDao.update(task.toEntity())
-        if (task.isDone || task.ddl == null) {
+        if (task.isDone || task.cancelled || task.ddl == null) {
             ReminderScheduler.cancel(context, task.id)
         } else {
             ReminderScheduler.scheduleFor(context, task)
@@ -45,6 +50,17 @@ class TaskRepository(
         taskDao.setDone(task.id, done, if (done) now else null)
         if (done) ReminderScheduler.cancel(context, task.id)
         else ReminderScheduler.scheduleFor(context, task)
+        WidgetUpdater.refresh(context)
+    }
+
+    /** 终止 / 恢复任务：终止后不再提醒、不再计入逾期与今日统计。 */
+    suspend fun setCancelled(task: Task, cancelled: Boolean) {
+        taskDao.setCancelled(task.id, cancelled)
+        if (cancelled) {
+            ReminderScheduler.cancel(context, task.id)
+        } else {
+            ReminderScheduler.scheduleFor(context, task.copy(cancelled = false))
+        }
         WidgetUpdater.refresh(context)
     }
 

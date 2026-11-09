@@ -1,9 +1,8 @@
 package com.dengao.noticetodo.ui.home
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,10 +22,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -59,6 +60,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -74,6 +76,7 @@ import com.dengao.noticetodo.domain.model.Task
 import com.dengao.noticetodo.domain.model.TaskBucket
 import com.dengao.noticetodo.domain.model.TaskBuckets
 import com.dengao.noticetodo.domain.model.TaskSource
+import com.dengao.noticetodo.domain.model.TaskStatus
 import com.dengao.noticetodo.parser.TriggerMatcher
 import com.dengao.noticetodo.ui.Draft
 import com.dengao.noticetodo.ui.IncomingState
@@ -95,11 +98,14 @@ fun HomeScreen(
     val viewModel: HomeViewModel = viewModel()
     val activeTasks by viewModel.active.collectAsStateWithLifecycle()
     val completedTasks by viewModel.completed.collectAsStateWithLifecycle()
+    val cancelledTasks by viewModel.cancelled.collectAsStateWithLifecycle()
     val stats by viewModel.stats.collectAsStateWithLifecycle()
     val now by viewModel.now.collectAsStateWithLifecycle()
 
     var showCompleted by rememberSaveable { mutableStateOf(false) }
+    var showCancelled by rememberSaveable { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<Task?>(null) }
+    var actionTask by remember { mutableStateOf<Task?>(null) }
     var guideDismissed by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -150,6 +156,8 @@ fun HomeScreen(
         ) {
             item { TodayRingCard(stats) }
 
+            item { YearProgressCard() }
+
             incoming.clipboardText?.let { text ->
                 item {
                     ClipboardBanner(
@@ -178,25 +186,23 @@ fun HomeScreen(
                         TaskCard(
                             task = task,
                             now = now,
-                            onClick = { navController.navigate(Routes.edit(task.id)) },
-                            onToggleDone = { viewModel.setDone(task, true) },
-                            onDelete = { pendingDelete = task }
+                            onClick = { navController.navigate(Routes.detail(task.id)) },
+                            onAction = { actionTask = task },
+                            onToggleDone = { viewModel.setDone(task, true) }
                         )
                     }
                 }
             }
 
-            if (activeTasks.isEmpty() && completedTasks.isEmpty()) {
+            if (activeTasks.isEmpty() && completedTasks.isEmpty() && cancelledTasks.isEmpty()) {
                 item { EmptyState() }
             }
 
-            item { YearProgressCard() }
-
             if (completedTasks.isNotEmpty()) {
                 item(key = "completed-header") {
-                    CompletedHeader(
+                    CollapsibleHeader(
+                        title = "已完成 ${completedTasks.size}",
                         expanded = showCompleted,
-                        count = completedTasks.size,
                         onToggle = { showCompleted = !showCompleted }
                     )
                 }
@@ -205,10 +211,30 @@ fun HomeScreen(
                         TaskCard(
                             task = task,
                             now = now,
-                            done = true,
-                            onClick = { navController.navigate(Routes.edit(task.id)) },
-                            onToggleDone = { viewModel.setDone(task, false) },
-                            onDelete = { pendingDelete = task }
+                            onClick = { navController.navigate(Routes.detail(task.id)) },
+                            onAction = { actionTask = task },
+                            onToggleDone = { viewModel.setDone(task, false) }
+                        )
+                    }
+                }
+            }
+
+            if (cancelledTasks.isNotEmpty()) {
+                item(key = "cancelled-header") {
+                    CollapsibleHeader(
+                        title = "已终止 ${cancelledTasks.size}",
+                        expanded = showCancelled,
+                        onToggle = { showCancelled = !showCancelled }
+                    )
+                }
+                if (showCancelled) {
+                    items(cancelledTasks, key = { "cancelled-${it.id}" }) { task ->
+                        TaskCard(
+                            task = task,
+                            now = now,
+                            onClick = { navController.navigate(Routes.detail(task.id)) },
+                            onAction = { actionTask = task },
+                            onToggleDone = { viewModel.setCancelled(task, false) }
                         )
                     }
                 }
@@ -238,6 +264,97 @@ fun HomeScreen(
                 TextButton(onClick = { pendingDelete = null }) { Text("取消") }
             }
         )
+    }
+
+    actionTask?.let { task ->
+        TaskActionSheet(
+            task = task,
+            onDismiss = { actionTask = null },
+            onToggleDone = {
+                viewModel.setDone(task, !task.isDone)
+                actionTask = null
+            },
+            onToggleCancelled = {
+                viewModel.setCancelled(task, !task.cancelled)
+                actionTask = null
+            },
+            onDelete = {
+                pendingDelete = task
+                actionTask = null
+            }
+        )
+    }
+}
+
+/** 卡片右下角「操作」按钮弹出的动作面板。 */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TaskActionSheet(
+    task: Task,
+    onDismiss: () -> Unit,
+    onToggleDone: () -> Unit,
+    onToggleCancelled: () -> Unit,
+    onDelete: () -> Unit
+) {
+    androidx.compose.material3.ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Column(Modifier.padding(bottom = 28.dp)) {
+            Text(
+                text = task.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+            )
+            Text(
+                text = "选择要执行的操作",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            SheetAction(
+                icon = Icons.Default.Done,
+                label = if (task.isDone) "取消完成" else "完成任务",
+                tint = MaterialTheme.colorScheme.primary,
+                onClick = onToggleDone
+            )
+            SheetAction(
+                icon = Icons.Default.Block,
+                label = if (task.cancelled) "恢复任务" else "终止任务",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                onClick = onToggleCancelled
+            )
+            SheetAction(
+                icon = Icons.Default.Delete,
+                label = "删除任务",
+                tint = MaterialTheme.colorScheme.error,
+                onClick = onDelete
+            )
+        }
+    }
+}
+
+@Composable
+private fun SheetAction(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = tint)
     }
 }
 
@@ -425,36 +542,46 @@ private fun YearGrid(passed: Int, total: Int) {
 
 /* ---------------- 任务卡片 ---------------- */
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TaskCard(
     task: Task,
     now: Long,
     onClick: () -> Unit,
-    onToggleDone: () -> Unit,
-    onDelete: () -> Unit,
-    done: Boolean = false
+    onAction: () -> Unit,
+    onToggleDone: () -> Unit
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
-    val progress = if (done) 1f else TaskBuckets.progressOf(task, now)
-    val percent = ((progress ?: 0f) * 100).toInt()
-    val overdue = task.ddl != null && task.ddl < now && !done
+    val status = task.status
+    val done = status == TaskStatus.DONE
+    val cancelled = status == TaskStatus.CANCELLED
+    val overdue = task.isOverdue(now)
+    val progress = when {
+        cancelled -> null
+        done -> 1f
+        else -> TaskBuckets.progressOf(task, now)
+    }
+    val percentText = if (progress == null) "—" else "${(progress * 100).toInt()}%"
     val accent = when {
-        done -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f)
+        cancelled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.28f)
+        done -> MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)
         overdue -> MaterialTheme.colorScheme.error
         else -> priorityColor(task.priority)
+    }
+    val remainingText = when {
+        cancelled -> "已终止"
+        done -> "已完成"
+        else -> TimeUtils.remainingText(task.ddl, now)
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = onClick, onLongClick = { menuExpanded = true }),
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(Modifier.height(IntrinsicSize.Min)) {
-            // 左侧色条：优先级 / 逾期 / 已完成
+            // 左侧色条：优先级 / 逾期 / 已完成 / 已终止
             Box(
                 Modifier
                     .width(4.dp)
@@ -464,7 +591,7 @@ private fun TaskCard(
             Column(
                 Modifier
                     .weight(1f)
-                    .padding(start = 12.dp, end = 6.dp, top = 12.dp, bottom = 10.dp)
+                    .padding(start = 12.dp, end = 4.dp, top = 12.dp, bottom = 10.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -473,42 +600,25 @@ private fun TaskCard(
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        textDecoration = if (cancelled) TextDecoration.LineThrough else null,
+                        color = if (cancelled) MaterialTheme.colorScheme.onSurfaceVariant
+                        else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (progress == null) "—" else "$percent%",
+                        text = percentText,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = accent
                     )
-                    Box {
-                        IconButton(onClick = { menuExpanded = true }, modifier = Modifier.size(36.dp)) {
-                            Icon(
-                                Icons.Default.Done,
-                                contentDescription = "更多操作",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                            DropdownMenuItem(
-                                text = { Text(if (done) "取消完成" else "标记完成") },
-                                onClick = {
-                                    menuExpanded = false
-                                    onToggleDone()
-                                },
-                                leadingIcon = { Icon(Icons.Default.Done, contentDescription = null) }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("删除") },
-                                onClick = {
-                                    menuExpanded = false
-                                    onDelete()
-                                },
-                                leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) }
-                            )
-                        }
+                    IconButton(onClick = onAction, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "任务操作",
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
 
@@ -529,7 +639,7 @@ private fun TaskCard(
                     }
                     Spacer(Modifier.weight(1f))
                     Text(
-                        text = if (done) "已完成" else TimeUtils.remainingText(task.ddl, now),
+                        text = remainingText,
                         style = MaterialTheme.typography.labelSmall,
                         color = if (overdue) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurfaceVariant
@@ -608,7 +718,7 @@ private fun SectionHeader(title: String, count: Int, danger: Boolean = false) {
 }
 
 @Composable
-private fun CompletedHeader(expanded: Boolean, count: Int, onToggle: () -> Unit) {
+private fun CollapsibleHeader(title: String, expanded: Boolean, onToggle: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -618,7 +728,7 @@ private fun CompletedHeader(expanded: Boolean, count: Int, onToggle: () -> Unit)
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "已完成 $count",
+            text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f)
